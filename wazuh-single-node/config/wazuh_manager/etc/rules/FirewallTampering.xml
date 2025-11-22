@@ -1,0 +1,224 @@
+<group name="firewall_tampering,security_bypass,syscheck,">
+
+  <!-- ============================================= -->
+  <!-- LINUX FIREWALL COMMANDS -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100300: iptables manipulation -->
+  <rule id="100300" level="12">
+    <match>iptables -A|iptables -I|iptables -D|iptables -F|iptables --flush</match>
+    <description>ALERT: iptables firewall modification detected</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>iptables_modification,firewall_bypass,</group>
+  </rule>
+
+  <!-- Rule 100301: UFW (Ubuntu Firewall) manipulation -->
+  <rule id="100301" level="12">
+    <match>ufw allow|ufw disable|ufw delete|ufw reset</match>
+    <description>ALERT: UFW firewall modification detected</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>ufw_modification,firewall_bypass,</group>
+  </rule>
+
+  <!-- Rule 100302: firewalld manipulation -->
+  <rule id="100302" level="12">
+    <match>firewall-cmd --add-port|firewall-cmd --add-service|firewall-cmd --zone|firewall-cmd --permanent</match>
+    <description>ALERT: firewalld modification detected</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>firewalld_modification,firewall_bypass,</group>
+  </rule>
+
+  <!-- Rule 100303: nftables manipulation -->
+  <rule id="100303" level="12">
+    <match>nft add|nft delete|nft flush|nft insert</match>
+    <description>ALERT: nftables firewall modification detected</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>nftables_modification,firewall_bypass,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- DANGEROUS PORT OPENINGS -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100310: Opening common attack ports -->
+  <rule id="100310" level="14">
+    <if_sid>100300,100301,100302,100303</if_sid>
+    <match type="pcre2">:22|:23|:3389|:4444|:5555|:8080|:9000|:6666|:1337</match>
+    <description>CRITICAL: Firewall rule opening high-risk port (SSH/RDP/C2)</description>
+    <mitre>
+      <id>T1021</id>
+      <id>T1562.004</id>
+    </mitre>
+    <group>dangerous_port,remote_access,</group>
+  </rule>
+
+  <!-- Rule 100311: Opening all ports / accepting all traffic -->
+  <rule id="100311" level="15">
+    <if_sid>100300,100301,100302,100303</if_sid>
+    <match>ACCEPT all|allow all|--dport 0:65535|anywhere to any</match>
+    <description>CRITICAL: Firewall allowing ALL traffic - complete bypass</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>firewall_disable,complete_bypass,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- FIREWALL SERVICE MANIPULATION -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100320: Stopping firewall service -->
+  <rule id="100320" level="15">
+    <match>systemctl stop firewalld|systemctl disable firewalld|systemctl stop ufw|systemctl disable ufw|service iptables stop|service firewalld stop</match>
+    <description>CRITICAL: Firewall service being stopped/disabled</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>firewall_disable,service_stop,</group>
+  </rule>
+
+  <!-- Rule 100321: Unloading firewall kernel modules -->
+  <rule id="100321" level="14">
+    <match>rmmod iptable|rmmod nf_|modprobe -r iptable</match>
+    <description>CRITICAL: Firewall kernel module being removed</description>
+    <mitre>
+      <id>T1562.004</id>
+      <id>T1014</id>
+    </mitre>
+    <group>kernel_module,firewall_bypass,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- WINDOWS FIREWALL COMMANDS -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100330: Windows Firewall modification -->
+  <rule id="100330" level="12">
+    <match>netsh advfirewall|netsh firewall|New-NetFirewallRule|Set-NetFirewallProfile</match>
+    <description>ALERT: Windows Firewall modification detected</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>windows_firewall,firewall_bypass,</group>
+  </rule>
+
+  <!-- Rule 100331: Windows Firewall being disabled -->
+  <rule id="100331" level="15">
+    <match>netsh advfirewall set allprofiles state off|Set-NetFirewallProfile -Enabled False</match>
+    <description>CRITICAL: Windows Firewall being disabled</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>windows_firewall_disable,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- DOCKER/CONTAINER FIREWALL BYPASS -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100340: Docker port exposure -->
+  <rule id="100340" level="11">
+    <match>docker run.*-p|docker-compose.*ports:</match>
+    <description>WARNING: Docker container exposing ports</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>docker_port_exposure,</group>
+  </rule>
+
+  <!-- Rule 100341: Docker host network mode (bypasses firewall) -->
+  <rule id="100341" level="13">
+    <match>docker run.*--network host|docker run.*--net host</match>
+    <description>CRITICAL: Docker using host network mode - bypasses firewall isolation</description>
+    <mitre>
+      <id>T1562.004</id>
+      <id>T1611</id>
+    </mitre>
+    <group>docker_host_network,container_escape,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- PROXY/TUNNELING TO BYPASS FIREWALL -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100350: SSH tunneling -->
+  <rule id="100350" level="10">
+    <match>ssh.*-L|ssh.*-R|ssh.*-D|ssh.*LocalForward|ssh.*RemoteForward</match>
+    <description>WARNING: SSH port forwarding/tunneling detected</description>
+    <mitre>
+      <id>T1090.001</id>
+      <id>T1572</id>
+    </mitre>
+    <group>ssh_tunnel,port_forwarding,</group>
+  </rule>
+
+  <!-- Rule 100351: Reverse proxy tools -->
+  <rule id="100351" level="11">
+    <match>ngrok|frp|chisel|socat|stunnel|proxychains</match>
+    <description>ALERT: Reverse proxy/tunneling tool detected</description>
+    <mitre>
+      <id>T1090</id>
+      <id>T1572</id>
+    </mitre>
+    <group>reverse_proxy,tunnel_tool,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- SELINUX/APPARMOR BYPASS (Security Context) -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100360: SELinux manipulation -->
+  <rule id="100360" level="13">
+    <match>setenforce 0|semanage port -a|semodule -d</match>
+    <description>CRITICAL: SELinux security policy being weakened</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>selinux_bypass,security_weakening,</group>
+  </rule>
+
+  <!-- Rule 100361: AppArmor manipulation -->
+  <rule id="100361" level="13">
+    <match>apparmor_parser -R|aa-complain|aa-disable</match>
+    <description>CRITICAL: AppArmor security profile being disabled</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>apparmor_bypass,security_weakening,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- CORRELATION: AGENT + FIREWALL TAMPERING -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100370: AI agent manipulating firewall -->
+  <rule id="100370" level="15">
+    <if_sid>100300,100301,100302,100303,100320,100330,100331</if_sid>
+    <match>cursor|agent|python.*agent|ai_agent</match>
+    <description>CRITICAL: AI Agent attempting to manipulate firewall</description>
+    <mitre>
+      <id>T1562.004</id>
+      <id>T1204.002</id>
+    </mitre>
+    <group>agent_firewall_tampering,automated_attack,</group>
+  </rule>
+
+  <!-- Rule 100371: Multiple firewall bypass attempts -->
+  <rule id="100371" level="14" frequency="3" timeframe="180">
+    <if_matched_sid>100300,100301,100302,100303,100320,100330</if_matched_sid>
+    <description>CRITICAL: Multiple firewall tampering attempts detected</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>persistent_attack,firewall_bypass,</group>
+  </rule>
+
+</group>

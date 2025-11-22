@@ -1,0 +1,224 @@
+<!-- =============================================== -->
+<!-- INTELLIGENT MALICIOUS PACKAGE DETECTION -->
+<!-- Based on real-world attacks from 2024-2025 -->
+<!-- Add to /var/ossec/etc/rules/local_rules.xml -->
+<!-- =============================================== -->
+
+<group name="malicious_packages,supply_chain,syscheck,">
+
+  <!-- Base rule: Detect pip install -->
+  <rule id="100200" level="3">
+    <match>pip install|pip3 install</match>
+    <description>Package installation detected</description>
+    <group>package_install,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- TYPOSQUATTING - Top Targeted Packages 2024 -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100210: ML/Data Science typosquats -->
+  <rule id="100210" level="12">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(numpby|nunpy|numpi|numpy-|nmupy|tensorflow-|tensorflw|tensorflo|PyToich|pytorck|pytorch-|scikit-lean|sckit-learn|Matplotltib|matplotib|pandsa|pandar|panda-|scipby|scipy-)</match>
+    <description>CRITICAL: Typosquatted ML/Data Science package detected</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>typosquatting,ml_package,</group>
+  </rule>
+
+  <!-- Rule 100211: Web framework typosquats -->
+  <rule id="100211" level="12">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(reqeusts|requeests|requestss|urllib3s|beautifulsoup-|djang0|flask-|fastapi-|asyncio-|aiohttp-)</match>
+    <description>CRITICAL: Typosquatted web framework package detected</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>typosquatting,web_framework,</group>
+  </rule>
+
+  <!-- Rule 100212: Crypto/blockchain typosquats -->
+  <rule id="100212" level="13">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(fabrice|solana-|web3-py|eth-account|cryptograpy|pycrypto-|bitcoin-|ethereum-)</match>
+    <description>CRITICAL: Typosquatted crypto package (high risk for credential theft)</description>
+    <mitre>
+      <id>T1195.001</id>
+      <id>T1552.001</id>
+    </mitre>
+    <group>typosquatting,crypto_package,credential_theft,</group>
+  </rule>
+
+  <!-- Rule 100213: AI/LLM typosquats (NEW 2024) -->
+  <rule id="100213" level="12">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(openai-|langchain-|transformers-|anthropic-|huggingface-|llama-|mistral-)</match>
+    <description>CRITICAL: Typosquatted AI/LLM package detected</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>typosquatting,ai_package,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- KNOWN MALICIOUS PACKAGES (2024-2025) -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100220: Known malware packages -->
+  <rule id="100220" level="15">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(termncolor|sisaws|secmeasure|aiocpa|NP6HelperHttptest|NP6HelperHttper|zlibxjson|jeIlyfish|python3-dateutil|colourama|pycryptoenv|pycryptoconf|quasarlib|swapmempool)</match>
+    <description>MALWARE DETECTED: Known malicious package installation</description>
+    <mitre>
+      <id>T1195.001</id>
+      <id>T1059.006</id>
+    </mitre>
+    <group>known_malware,immediate_threat,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- SUSPICIOUS NAMING PATTERNS -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100230: Dash/hyphen variations (common attack) -->
+  <rule id="100230" level="9">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">-test$|-tmp$|-dev$|-alpha$|-beta$|^test-|^tmp-|^demo-</match>
+    <description>WARNING: Package with suspicious test/dev naming pattern</description>
+    <group>suspicious_naming,</group>
+  </rule>
+
+  <!-- Rule 100231: Visual confusion (l/I, 0/O) -->
+  <rule id="100231" level="10">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">jeI|Il1|O0o|rn|vv</match>
+    <description>ALERT: Package name uses visual confusion characters</description>
+    <mitre>
+      <id>T1036</id>
+    </mitre>
+    <group>visual_confusion,typosquatting,</group>
+  </rule>
+
+  <!-- Rule 100232: Number substitution (common obfuscation) -->
+  <rule id="100232" level="8">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">[a-z]+3[a-z]+|[a-z]+0[a-z]+|py[0-9]|lib[0-9]</match>
+    <description>WARNING: Package name uses number substitution</description>
+    <group>number_substitution,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- BEHAVIORAL INDICATORS -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100240: Obfuscated package (setup.py indicators) -->
+  <rule id="100240" level="11">
+    <if_sid>100200</if_sid>
+    <match>exec|eval|compile|base64|__import__|marshal|pickle</match>
+    <description>CRITICAL: Package installation mentions obfuscation keywords</description>
+    <mitre>
+      <id>T1027</id>
+    </mitre>
+    <group>obfuscation,suspicious_behavior,</group>
+  </rule>
+
+  <!-- Rule 100241: AWS credential stealing packages -->
+  <rule id="100241" level="14">
+    <if_sid>100200</if_sid>
+    <match>boto3|aws-|awscli</match>
+    <field name="package_name" type="pcre2">(?i)(fabrice|aws-sdk-|awscli-)</field>
+    <description>HIGH RISK: AWS-related package that may steal credentials</description>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1078.004</id>
+    </mitre>
+    <group>aws_credential_theft,cloud_attack,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- AUTOMATED ATTACK DETECTION -->
+  <!-- ============================================= -->
+
+  <!-- Rule 100250: Rapid installations (automated campaign) -->
+  <rule id="100250" level="13" frequency="5" timeframe="120">
+    <if_matched_sid>100200</if_matched_sid>
+    <description>CRITICAL: Multiple package installations in short time - possible automated attack</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>automated_attack,mass_install,</group>
+  </rule>
+
+  <!-- Rule 100251: Multiple typosquats detected -->
+  <rule id="100251" level="14" frequency="2" timeframe="300">
+    <if_matched_sid>100210,100211,100212,100213</if_matched_sid>
+    <description>CRITICAL: Multiple typosquatted packages detected - active compromise</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>active_compromise,multiple_typosquats,</group>
+  </rule>
+
+</group>
+
+<!-- =============================================== -->
+<!-- TESTING & VALIDATION -->
+<!-- =============================================== -->
+<!--
+TEST COMMANDS:
+1. Test typosquatting detection:
+   echo "pip install reqeusts" >> /.bash_history
+   # Should trigger rule 100211
+
+2. Test known malware:
+   echo "pip install colourama" >> /.bash_history
+   # Should trigger rule 100220 (level 15)
+
+3. Test ML typosquat:
+   echo "pip install numpby" >> /.bash_history
+   # Should trigger rule 100210
+
+4. Test visual confusion:
+   echo "pip install jeIlyfish" >> /.bash_history
+   # Should trigger rule 100231
+
+5. Test rapid installation:
+   for i in {1..5}; do echo "pip install test-pkg-$i" >> /.bash_history; done
+   # Should trigger rule 100250 after 5 installs
+
+CHECK ALERTS:
+tail -f /var/ossec/logs/alerts/alerts.log | grep -E "100210|100220|100230|100250"
+
+WHITELIST LEGITIMATE PACKAGES (if needed):
+Add this rule BEFORE the typosquatting rules:
+
+<rule id="100205" level="3">
+  <if_sid>100200</if_sid>
+  <match type="pcre2">^(requests|numpy|pandas|tensorflow|pytorch|flask|django|beautifulsoup4|scikit-learn|matplotlib|scipy|openai|anthropic|boto3)$</match>
+  <description>Legitimate package installation</description>
+  <group>trusted_package,</group>
+</rule>
+-->
+
+<!-- =============================================== -->
+<!-- INTELLIGENCE SOURCES -->
+<!-- =============================================== -->
+<!--
+This ruleset is based on real attacks from:
+- March 2024: 500+ typosquatted packages targeting ML libraries
+- August 2024: SilentSync RAT via sisaws/secmeasure
+- November 2024: fabrice package stealing AWS credentials
+- 2024-2025: Ongoing Lazarus APT campaigns
+- February 2025: Visual confusion attacks (jeIlyfish)
+
+Updated patterns based on:
+- Phylum Research
+- ReversingLabs
+- Checkmarx
+- Zscaler ThreatLabz
+- JPCERT/CC
+
+Last updated: November 2025
+-->
