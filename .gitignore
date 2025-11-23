@@ -1,3 +1,5 @@
+wazuh-single-node/config/wazuh_indexer_ssl_certs
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
