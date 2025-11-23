@@ -1,0 +1,82 @@
+<!-- Cursor AI Agent Reverse Shell Detection Rules -->
+
+<group name="cursor_agent,reverse_shell,">
+  
+  <!-- Rule: Detect Python reverse shell file creation -->
+  <rule id="100200" level="12">
+    <if_sid>554</if_sid>
+    <regex type="pcre2">(?i)(socket\.socket|subprocess\.call|os\.system|pty\.spawn|/bin/bash.*tcp|/bin/sh.*tcp|nc\s+-e|netcat.*-e)</regex>
+    <match>.py|python</match>
+    <description>Suspicious Python reverse shell file created</description>
+    <mitre>
+      <id>T1059.006</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>attack.execution,attack.command_and_control,</group>
+  </rule>
+
+  <!-- Rule: Detect Python executing with socket operations -->
+  <rule id="100201" level="13">
+    <if_sid>5104,5105</if_sid>
+    <field name="process.name">python|python3</field>
+    <regex type="pcre2">(?i)(socket|connect|bind|listen|subprocess|pty|spawn)</regex>
+    <description>Python process spawning suspicious socket operations</description>
+    <group>reverse_shell,attack.execution,</group>
+  </rule>
+
+  <!-- Rule: Detect reverse shell command patterns -->
+  <rule id="100202" level="14">
+    <decoded_as>auditd</decoded_as>
+    <regex type="pcre2">(?i)(bash\s+-i.*dev\/tcp|sh\s+-i.*dev\/tcp|exec\s+\d+.*tcp|0&lt;&amp;1|1&gt;&amp;2|2&gt;&amp;1)</regex>
+    <description>Reverse shell command execution detected</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>reverse_shell,attack.execution,</group>
+  </rule>
+
+  <!-- Rule: Detect Cursor-specific patterns -->
+  <rule id="100203" level="11">
+    <if_sid>5104</if_sid>
+    <field name="process.parent.name">cursor|code|codium</field>
+    <field name="process.name">python|python3|bash|sh</field>
+    <description>Cursor/VSCode spawned suspicious interpreter</description>
+    <group>cursor_agent,</group>
+  </rule>
+
+  <!-- Rule: Detect outbound connections from Python -->
+  <rule id="100204" level="12">
+    <if_sid>5401,5402</if_sid>
+    <field name="process.name">python|python3</field>
+    <regex type="pcre2">(?i)(established|syn_sent)</regex>
+    <match>!127.0.0.1|!localhost</match>
+    <description>Python establishing outbound connection to external IP</description>
+    <group>reverse_shell,network,</group>
+  </rule>
+
+  <!-- Rule: Detect netcat/nc execution -->
+  <rule id="100205" level="13">
+    <if_sid>5104,5105</if_sid>
+    <regex type="pcre2">(?i)(nc\s+|netcat|ncat|socat)</regex>
+    <regex type="pcre2">(?i)(-e\s+|--exec|-c\s+)</regex>
+    <description>Netcat reverse shell execution detected</description>
+    <group>reverse_shell,attack.execution,</group>
+  </rule>
+
+  <!-- Rule: Combined detection - File creation + execution -->
+  <rule id="100206" level="15" frequency="2" timeframe="60">
+    <if_matched_sid>100200</if_matched_sid>
+    <same_source_ip />
+    <description>Reverse shell file created and executed within 1 minute</description>
+    <group>reverse_shell,attack.execution,</group>
+  </rule>
+
+  <!-- Rule: Detect base64 encoded reverse shells -->
+  <rule id="100208" level="13">
+    <if_sid>5104</if_sid>
+    <regex type="pcre2">(?i)(echo.*base64|python.*-c.*import.*base64|eval.*decode)</regex>
+    <description>Base64 encoded command execution detected</description>
+    <group>reverse_shell,attack.defense_evasion,</group>
+  </rule>
+
+</group>

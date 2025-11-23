@@ -1,0 +1,13 @@
+<decoder name="python_script">
+  <program_name>python|python3</program_name>
+</decoder>
+
+<decoder name="python_script_content">
+  <parent>python_script</parent>
+  <regex type="pcre2">(?i)(socket|subprocess|os\.system|paramiko|pexpect)</regex>
+  <order>script_content</order>
+</decoder>
+
+<decoder name="cursor_activity">
+  <program_name>cursor|code|codium</program_name>
+</decoder>
