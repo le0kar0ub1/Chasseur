@@ -183,6 +183,11 @@
     <frequency>5</frequency>
   </localfile>
 
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/host/cursor-logs/*/window*/output_*/cursor.hooks.log</location>
+  </localfile>
+
   <!-- <localfile>
     <log_format>command</log_format>
     <command>tail -n 5 /.bash_history || echo "no history"</command>

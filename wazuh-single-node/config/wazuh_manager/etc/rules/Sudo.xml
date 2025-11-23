@@ -1,0 +1,8 @@
+<group name="command_execution,syscheck,">
+  <!-- Rule: Sudo/privileged commands -->
+  <rule id="100500" level="10">
+    <match>sudo |^su -</match>
+    <description>WARNING: Trying to execute a privileged command</description>
+    <group>privileged_command,</group>
+  </rule>
+</group>

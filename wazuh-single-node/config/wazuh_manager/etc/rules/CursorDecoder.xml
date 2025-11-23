@@ -1,0 +1,211 @@
+<!-- =============================================== -->
+<!-- PART 1: DECODER -->
+<!-- Add to /var/ossec/etc/decoders/local_decoder.xml on MANAGER -->
+<!-- =============================================== -->
+
+<decoder name="cursor-command">
+  <prematch>"command":</prematch>
+  <regex offset="after_prematch">^ "(\S+)"</regex>
+  <order>command</order>
+</decoder>
+
+<!-- Optional: Also detect it's a beforeShellExecution event -->
+<decoder name="cursor-before-exec-marker">
+  <prematch>beforeShellExecution</prematch>
+</decoder>
+
+<!-- =============================================== -->
+<!-- PART 2: RULES -->
+<!-- Add to /var/ossec/etc/rules/local_rules.xml on MANAGER -->
+<!-- =============================================== -->
+
+<group name="cursor_agent,command_execution,syscheck,">
+
+  <!-- Rule: beforeShellExecution (command about to run) -->
+  <rule id="100401" level="3">
+    <decoded_as>cursor-command</decoded_as>
+    <description>Cursor AI executing: $(command)</description>
+    <group>cursor_command,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- DANGEROUS COMMANDS DETECTION -->
+  <!-- ============================================= -->
+
+  <!-- Rule: pip install commands -->
+  <rule id="100410" level="8">
+    <if_sid>100401</if_sid>
+    <field name="command">^pip install|^pip3 install|python -m pip install</field>
+    <description>Cursor AI installing Python package: $(command)</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>cursor_package_install,</group>
+  </rule>
+
+  <!-- Rule: npm/yarn install -->
+  <rule id="100411" level="8">
+    <if_sid>100401</if_sid>
+    <field name="command">^npm install|^yarn add|^pnpm add</field>
+    <description>Cursor AI installing Node package: $(command)</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>cursor_npm_install,</group>
+  </rule>
+
+  <!-- Rule: Firewall manipulation -->
+  <rule id="100412" level="12">
+    <if_sid>100401</if_sid>
+    <field name="command">iptables|ufw |firewall-cmd|nft |systemctl.*firewall</field>
+    <description>ALERT: Cursor AI attempting firewall modification: $(command)</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>cursor_firewall_tampering,</group>
+  </rule>
+
+  <!-- Rule: Sudo/privileged commands -->
+  <rule id="100413" level="10">
+    <if_sid>100401</if_sid>
+    <field name="command">^sudo |^su -</field>
+    <description>WARNING: Cursor AI executing privileged command: $(command)</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>cursor_privileged_exec,</group>
+  </rule>
+
+  <!-- Rule: Dangerous file operations -->
+  <rule id="100414" level="11">
+    <if_sid>100401</if_sid>
+    <field name="command">rm -rf|dd if=|mkfs\.|fdisk|parted</field>
+    <description>CRITICAL: Cursor AI attempting dangerous file operation: $(command)</description>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
+    <group>cursor_dangerous_operation,data_destruction,</group>
+  </rule>
+
+  <!-- Rule: Network tools (curl, wget) -->
+  <rule id="100415" level="7">
+    <if_sid>100401</if_sid>
+    <field name="command">curl |wget |nc |netcat |socat</field>
+    <description>Cursor AI using network tool: $(command)</description>
+    <mitre>
+      <id>T1071</id>
+    </mitre>
+    <group>cursor_network_tool,</group>
+  </rule>
+
+  <!-- Rule: SSH/Remote access -->
+  <rule id="100416" level="9">
+    <if_sid>100401</if_sid>
+    <field name="command">ssh |scp |rsync.*ssh|ssh-keygen</field>
+    <description>WARNING: Cursor AI using SSH/remote access: $(command)</description>
+    <mitre>
+      <id>T1021.004</id>
+    </mitre>
+    <group>cursor_remote_access,</group>
+  </rule>
+
+  <!-- Rule: Docker commands -->
+  <rule id="100417" level="8">
+    <if_sid>100401</if_sid>
+    <field name="command">^docker |^docker-compose</field>
+    <description>Cursor AI executing Docker command: $(command)</description>
+    <mitre>
+      <id>T1610</id>
+    </mitre>
+    <group>cursor_docker,</group>
+  </rule>
+
+  <!-- Rule: Git operations -->
+  <rule id="100418" level="6">
+    <if_sid>100401</if_sid>
+    <field name="command">^git clone|^git pull|^git push</field>
+    <description>Cursor AI performing Git operation: $(command)</description>
+    <group>cursor_git,</group>
+  </rule>
+
+  <!-- Rule: System modification -->
+  <rule id="100419" level="10">
+    <if_sid>100401</if_sid>
+    <field name="command">chmod 777|chown root|systemctl disable|systemctl stop</field>
+    <description>WARNING: Cursor AI modifying system configuration: $(command)</description>
+    <mitre>
+      <id>T1222</id>
+    </mitre>
+    <group>cursor_system_modification,</group>
+  </rule>
+
+  <!-- ============================================= -->
+  <!-- CORRELATION: Multiple dangerous commands -->
+  <!-- ============================================= -->
+
+  <!-- Rule: Multiple package installations -->
+  <rule id="100420" level="11" frequency="3" timeframe="300">
+    <if_matched_sid>100410,100411</if_matched_sid>
+    <same_field>conversation_id</same_field>
+    <description>ALERT: Cursor AI installing multiple packages rapidly</description>
+    <mitre>
+      <id>T1195.001</id>
+    </mitre>
+    <group>cursor_mass_install,</group>
+  </rule>
+
+</group>
+
+
+<!-- =============================================== -->
+<!-- INSTALLATION INSTRUCTIONS -->
+<!-- =============================================== -->
+<!--
+ON MANAGER:
+
+1. Add decoder to /var/ossec/etc/decoders/local_decoder.xml
+2. Add rules to /var/ossec/etc/rules/local_rules.xml
+3. Restart manager: systemctl restart wazuh-manager
+
+TESTING:
+
+1. Test decoder with sample log:
+   /var/ossec/bin/wazuh-logtest
+
+2. Paste this sample:
+═══════════════════════════════════════════════════════════════════════════════════════
+HOOK STEP REQUESTED (NO HOOKS CONFIGURED): beforeShellExecution
+═══════════════════════════════════════════════════════════════════════════════════════
+INPUT THAT WOULD HAVE BEEN SENT:
+{
+  "conversation_id": "test-123",
+  "command": "pip install colourama",
+  "hook_event_name": "beforeShellExecution"
+}
+═══════════════════════════════════════════════════════════════════════════════════════
+
+3. Should trigger:
+   - Rule 100401 (beforeShellExecution)
+   - Rule 100410 (pip install)
+   - If malicious package, also your existing typosquatting rules
+
+4. Check alerts on manager:
+   tail -f /var/ossec/logs/alerts/alerts.log | grep -A5 "100401\|100410"
+
+VERIFY DECODER:
+
+# On manager, check if decoder loaded:
+grep -r "cursor-pre-exec-hook" /var/ossec/logs/ossec.log
+
+# Test specific command:
+echo '{"command": "pip install reqeusts", "hook_event_name": "beforeShellExecution"}' | /var/ossec/bin/wazuh-logtest
+
+COMBINING WITH PREVIOUS RULES:
+
+These new rules work WITH your existing package detection rules.
+When Cursor runs "pip install colourama", you'll get:
+- Rule 100401: Cursor preparing to execute
+- Rule 100410: Package installation detected
+- Rule 100220: Known malware detected (from previous rules)
+- Desktop notification triggered!
+-->
