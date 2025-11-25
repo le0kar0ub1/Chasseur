@@ -4,6 +4,10 @@ Chasseur is a security monitoring system designed to detect and prevent maliciou
 
 This project democratizes infrastructure security for LLM agent users by providing a system that monitors agent behavior, detects anomalies, and alerts on potentially malicious command execution—all accessible to users with minimal security expertise and maintenance commitment.
 
+## Video Demonstration & Presentation
+
+[![Video presentation of the project on Youtube](https://img.youtube.com/vi/j-7OnvC4v4A/hqdefault.jpg)](https://www.youtube.com/watch?v=j-7OnvC4v4A)
+
 ## Overview
 
 Chasseur leverages [Wazuh](https://www.wazuh.com/), an open-source security monitoring platform, to:
